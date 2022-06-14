@@ -40,6 +40,9 @@ extern "C" const unsigned char keytab[256][256];
 #ifdef DECTAB
 extern "C" const unsigned char dectab[256][256];
 #endif
+#ifdef DYNDECTAB
+unsigned char dectab[256][256];
+#endif
 
 int errprintf(__in_z __format_string const char * _Format, ...);
 void quickdump(unsigned int addr, const unsigned char *data, unsigned int amount);
@@ -102,6 +105,19 @@ int main(int argc, char* argv[])
         exitclose(-1);
     }
     if (decode) {
+#ifdef DYNDECTAB
+        // 生成ByteDecode使用的动态反查表
+        for (int key = 0; key < 256; key++) {
+            for (int source = 0; source < 256; source++) {
+                for (int index = 0; index < 256; index++) {
+                    if (keytab[key][index] == source) {
+                        dectab[key][source] = index;
+                        break;
+                    }
+                }
+            }
+        }
+#endif
         uint8_t keylen;
         read(inputf, &keylen, sizeof(keylen));
         if (keylen > 24 || keylen < 8) {
@@ -266,8 +282,8 @@ int main(int argc, char* argv[])
 
 BYTE ByteDecode(BYTE key, BYTE source)
 {
-#ifdef DECTAB
-    return dectab[key][index];
+#if(defined DECTAB) || (defined DYNDECTAB)
+    return dectab[key][source];
 #else
     for (int index = 0; index < 256; index++) {
         if (keytab[key][index] == source) {
